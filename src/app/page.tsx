@@ -45,9 +45,9 @@ const CardContent = ({ children, className = "" }: { children: React.ReactNode; 
 );
 
 const ROAD_STYLES = [
-  { id: "Main Street", color: "bg-green-500", name: "Main St" },
-  { id: "Ring Road Highway", color: "bg-blue-500", name: "Ring Rd" },
-  { id: "Independence Avenue", color: "bg-orange-500", name: "Ind Ave" },
+  { id: "Akyempim", color: "bg-green-500", name: "Akyempim" },
+  { id: "Atuabo", color: "bg-blue-500", name: "Atuabo" },
+  { id: "Teberebie", color: "bg-orange-500", name: "Teberebie" },
 ];
 
 function LiveSimulationView({ 
@@ -214,7 +214,7 @@ function PenaltiesView({ penalties }: { penalties: PenaltyRecord[] }) {
                       </span>
                     </td>
                     <td className="px-6 py-4">{penalty.location}</td>
-                    <td className="px-6 py-4 text-right font-mono text-destructive font-bold">${penalty.fineAmount}</td>
+                    <td className="px-6 py-4 text-right font-mono text-destructive font-bold">GHc {penalty.fineAmount}</td>
                   </tr>
                 ))
               )}
@@ -392,9 +392,9 @@ export default function Dashboard() {
                           labelStyle={{ color: '#94a3b8', marginBottom: '8px' }}
                         />
                         <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
-                        <Line type="monotone" dataKey="Main Street Speed" stroke="#22c55e" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 6 }} />
-                        <Line type="monotone" dataKey="Ring Road Highway Speed" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 6 }} />
-                        <Line type="monotone" dataKey="Independence Avenue Speed" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 6 }} />
+                        <Line type="monotone" dataKey="Akyempim Speed" stroke="#22c55e" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 6 }} />
+                        <Line type="monotone" dataKey="Atuabo Speed" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 6 }} />
+                        <Line type="monotone" dataKey="Teberebie Speed" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3 }} activeDot={{ r: 6 }} />
                       </LineChart>
                     </ResponsiveContainer>
                   </CardContent>
@@ -440,7 +440,10 @@ export default function Dashboard() {
                               </span>
                               <span className="text-xs font-mono text-muted-foreground">{alert.timestamp} SYS</span>
                             </div>
-                            <p className="text-sm font-medium text-foreground">{alert.address}</p>
+                            <p className="text-sm font-medium text-foreground truncate" title={`${alert.road} - ${alert.address}`}>
+                              <span className="text-muted-foreground mr-1">{alert.road}:</span>
+                              {alert.address}
+                            </p>
                             <div className="mt-3 flex items-center text-xs">
                               {alert.type === 'Red Light Run' ? (
                                 <>

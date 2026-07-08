@@ -8,12 +8,12 @@ export type RoadData = {
 
 export type ChartDataPoint = {
   time: string;
-  "Main Street Speed": number;
-  "Main Street Density": number;
-  "Ring Road Highway Speed": number;
-  "Ring Road Highway Density": number;
-  "Independence Avenue Speed": number;
-  "Independence Avenue Density": number;
+  "Akyempim Speed": number;
+  "Akyempim Density": number;
+  "Atuabo Speed": number;
+  "Atuabo Density": number;
+  "Teberebie Speed": number;
+  "Teberebie Density": number;
 };
 
 export type IncidentAlert = {
@@ -36,11 +36,11 @@ export type PenaltyRecord = {
 };
 
 
-const ROADS = ["Main Street", "Ring Road Highway", "Independence Avenue"];
+const ROADS = ["Akyempim", "Atuabo", "Teberebie"];
 const ROAD_ADDRESSES: Record<string, string[]> = {
-  "Main Street": ["Intersection 42", "Downtown 5th Ave"],
-  "Ring Road Highway": ["North Bridge", "West End Exit"],
-  "Independence Avenue": ["Tunnel South Entrance", "Monument Square"]
+  "Akyempim": ["Junction 1", "Market Area", "Central Route"],
+  "Atuabo": ["North Gate", "Gas Plant Road", "Coastal Highway"],
+  "Teberebie": ["Mine Access Road", "Village Square", "South Checkpoint"]
 };
 
 export function useTrafficSimulation() {
@@ -54,9 +54,9 @@ export function useTrafficSimulation() {
   });
   const [penalties, setPenalties] = useState<PenaltyRecord[]>([]);
   const [junctionCounts, setJunctionCounts] = useState<Record<string, number>>({
-    "Main Street": 150,
-    "Ring Road Highway": 320,
-    "Independence Avenue": 85
+    "Akyempim": 150,
+    "Atuabo": 320,
+    "Teberebie": 85
   });
   const [simulatedTimeStr, setSimulatedTimeStr] = useState<string>("00:00:00");
   const simulatedTimeRef = useRef(new Date());
