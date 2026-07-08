@@ -13,10 +13,12 @@ import {
   Siren,
   Route,
   Play,
-  XCircle
+  XCircle,
+  FileText,
+  Search
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { useTrafficSimulation, IncidentAlert } from "@/hooks/useTrafficSimulation";
+import { useTrafficSimulation, IncidentAlert, PenaltyRecord } from "@/hooks/useTrafficSimulation";
 
 const Card = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
   <div className={`rounded-xl border border-border bg-card text-card-foreground shadow-sm ${className}`}>
@@ -50,10 +52,12 @@ const ROAD_STYLES = [
 
 function LiveSimulationView({ 
   alerts, 
+  junctionCounts,
   triggerIncident, 
   clearIncidents 
 }: { 
   alerts: IncidentAlert[], 
+  junctionCounts: Record<string, number>,
   triggerIncident: (road?: string) => void,
   clearIncidents: () => void 
 }) {
@@ -62,7 +66,7 @@ function LiveSimulationView({
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Live Network Visualization</h2>
-          <p className="text-muted-foreground text-sm">Real-time simulation of traffic flow and incidents across active routes.</p>
+          <p className="text-muted-foreground text-sm">Real-time simulation of traffic flow, incidents, and vehicle counts.</p>
         </div>
         <div className="flex space-x-3">
           <button 
@@ -84,17 +88,23 @@ function LiveSimulationView({
       
       <div className="flex-1 bg-muted/20 border border-border rounded-xl p-4 sm:p-8 relative overflow-hidden flex flex-col justify-around min-h-[500px]">
         {ROAD_STYLES.map((road) => {
-          const hasIncident = alerts.some(a => a.road === road.id);
+          const hasIncident = alerts.some(a => a.road === road.id && a.type !== "Red Light Run");
+          const hasRedLight = alerts.some(a => a.road === road.id && a.type === "Red Light Run");
           return (
             <div key={road.id} className="relative w-full h-32 flex items-center group">
               {/* Road surface */}
               <div className={`absolute w-full h-full border-t-2 border-b-2 border-dashed transition-all duration-1000 ${
-                hasIncident ? 'border-destructive bg-destructive/10' : 'border-border bg-card/40'
+                hasIncident ? 'border-destructive bg-destructive/10' : hasRedLight ? 'border-orange-500 bg-orange-500/5' : 'border-border bg-card/40'
               }`}></div>
               
-              {/* Road Label */}
-              <div className="absolute left-4 top-2 text-xs font-mono font-bold text-muted-foreground group-hover:text-foreground transition-colors z-30 bg-background/90 px-3 py-1.5 rounded border border-border shadow-sm">
-                {road.name}
+              {/* Road Label & Vehicles Count */}
+              <div className="absolute left-4 top-2 z-30 bg-background/90 px-3 py-1.5 rounded border border-border shadow-sm flex flex-col items-start">
+                <span className="text-xs font-mono font-bold text-muted-foreground group-hover:text-foreground transition-colors">
+                  {road.name}
+                </span>
+                <span className="text-[10px] font-mono text-accent mt-0.5 font-bold">
+                  Vehicles: {junctionCounts[road.id] || 0}
+                </span>
               </div>
 
               {/* Accident Marker */}
@@ -144,9 +154,81 @@ function LiveSimulationView({
   );
 }
 
+function PenaltiesView({ penalties }: { penalties: PenaltyRecord[] }) {
+  const [search, setSearch] = useState("");
+  
+  const filtered = penalties.filter(p => 
+    p.carNumber.toLowerCase().includes(search.toLowerCase()) || 
+    p.location.toLowerCase().includes(search.toLowerCase())
+  );
+
+  return (
+    <div className="flex flex-col h-full space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight">Live Penalty Log</h2>
+          <p className="text-muted-foreground text-sm">Real-time tracking of red light violations and automated fines.</p>
+        </div>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <input 
+            type="text"
+            placeholder="Search license or location..."
+            className="pl-9 pr-4 py-2 bg-card border border-border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-accent w-full sm:w-64"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+          />
+        </div>
+      </div>
+      
+      <Card className="flex-1 flex flex-col overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-left">
+            <thead className="text-xs text-muted-foreground uppercase bg-secondary/50 border-b border-border">
+              <tr>
+                <th className="px-6 py-4 font-medium">Time (SYS)</th>
+                <th className="px-6 py-4 font-medium">Car Number</th>
+                <th className="px-6 py-4 font-medium">Violation</th>
+                <th className="px-6 py-4 font-medium">Location</th>
+                <th className="px-6 py-4 font-medium text-right">Fine</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-6 py-8 text-center text-muted-foreground border-b border-border">
+                    No penalty records found.
+                  </td>
+                </tr>
+              ) : (
+                filtered.map((penalty) => (
+                  <tr key={penalty.id} className="border-b border-border hover:bg-secondary/20 transition-colors">
+                    <td className="px-6 py-4 font-mono text-muted-foreground">{penalty.timestamp}</td>
+                    <td className="px-6 py-4 font-mono font-bold text-foreground">
+                      <span className="bg-secondary px-2 py-1 rounded border border-border">{penalty.carNumber}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="flex items-center text-orange-500 font-medium">
+                        <AlertTriangle className="h-3 w-3 mr-1.5" />
+                        {penalty.type}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4">{penalty.location}</td>
+                    <td className="px-6 py-4 text-right font-mono text-destructive font-bold">${penalty.fineAmount}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
 export default function Dashboard() {
-  const [activeTab, setActiveTab] = useState<"dashboard" | "live">("dashboard");
-  const { chartData, alerts, globalStats, triggerIncident, clearIncidents, simulatedTimeStr } = useTrafficSimulation();
+  const [activeTab, setActiveTab] = useState<"dashboard" | "live" | "penalties">("dashboard");
+  const { chartData, alerts, globalStats, triggerIncident, clearIncidents, simulatedTimeStr, penalties, junctionCounts } = useTrafficSimulation();
 
   return (
     <div className="flex h-screen w-full bg-background overflow-hidden">
@@ -180,9 +262,16 @@ export default function Dashboard() {
             <Route className="mr-3 h-5 w-5" />
             Live Simulation
           </button>
-          <button className="w-full flex items-center px-3 py-2.5 text-muted-foreground hover:bg-secondary/50 hover:text-foreground rounded-md font-medium text-sm transition-colors">
-            <Car className="mr-3 h-5 w-5" />
-            Fleet Tracking
+          <button 
+            onClick={() => setActiveTab("penalties")}
+            className={`w-full flex items-center px-3 py-2.5 rounded-md font-medium text-sm transition-colors ${
+              activeTab === "penalties" 
+                ? "bg-secondary text-secondary-foreground shadow-sm" 
+                : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+            }`}
+          >
+            <FileText className="mr-3 h-5 w-5" />
+            Penalty Log
           </button>
           <button className="w-full flex items-center px-3 py-2.5 text-muted-foreground hover:bg-secondary/50 hover:text-foreground rounded-md font-medium text-sm transition-colors">
             <Settings className="mr-3 h-5 w-5" />
@@ -232,9 +321,12 @@ export default function Dashboard() {
           {activeTab === "live" ? (
             <LiveSimulationView 
               alerts={alerts} 
+              junctionCounts={junctionCounts}
               triggerIncident={triggerIncident} 
               clearIncidents={clearIncidents} 
             />
+          ) : activeTab === "penalties" ? (
+            <PenaltiesView penalties={penalties} />
           ) : (
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
               {/* KPI Metrics & Chart Column */}
@@ -334,8 +426,10 @@ export default function Dashboard() {
                               alert.isNew 
                                 ? 'bg-destructive/30 border-destructive shadow-[0_0_15px_rgba(239,68,68,0.5)] scale-[1.02]' 
                                 : alert.type === 'Blockage' 
-                                  ? 'bg-destructive/10 border-destructive/20' 
-                                  : 'bg-orange-500/10 border-orange-500/20'
+                                  ? 'bg-destructive/10 border-destructive/20'
+                                  : alert.type === 'Red Light Run'
+                                    ? 'bg-orange-500/10 border-orange-500/20'
+                                    : 'bg-orange-500/10 border-orange-500/20'
                             }`}
                           >
                             <div className={`absolute top-0 left-0 w-1 h-full ${alert.type === 'Blockage' ? 'bg-destructive' : 'bg-orange-500'}`}></div>
@@ -348,14 +442,24 @@ export default function Dashboard() {
                             </div>
                             <p className="text-sm font-medium text-foreground">{alert.address}</p>
                             <div className="mt-3 flex items-center text-xs">
-                              <span className={`px-2 py-0.5 rounded font-mono font-bold mr-2 ${
-                                alert.type === 'Blockage' 
-                                  ? 'bg-destructive/20 text-destructive' 
-                                  : 'bg-orange-500/20 text-orange-500'
-                              }`}>
-                                +{alert.delay} min delay
-                              </span>
-                              <span className="text-muted-foreground">Rerouting active</span>
+                              {alert.type === 'Red Light Run' ? (
+                                <>
+                                  <span className="bg-orange-500/20 text-orange-500 px-2 py-0.5 rounded font-mono font-bold mr-2">
+                                    Penalty Issued
+                                  </span>
+                                </>
+                              ) : (
+                                <>
+                                  <span className={`px-2 py-0.5 rounded font-mono font-bold mr-2 ${
+                                    alert.type === 'Blockage' 
+                                      ? 'bg-destructive/20 text-destructive' 
+                                      : 'bg-orange-500/20 text-orange-500'
+                                  }`}>
+                                    +{alert.delay} min delay
+                                  </span>
+                                  <span className="text-muted-foreground">Rerouting active</span>
+                                </>
+                              )}
                             </div>
                           </div>
                         ))

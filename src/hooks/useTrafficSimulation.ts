@@ -18,13 +18,23 @@ export type ChartDataPoint = {
 
 export type IncidentAlert = {
   id: string;
-  type: "Blockage" | "Damaged Car";
+  type: "Blockage" | "Damaged Car" | "Red Light Run";
   address: string;
   road: string;
   delay: number; // minutes
   timestamp: string;
   isNew: boolean;
 };
+
+export type PenaltyRecord = {
+  id: string;
+  carNumber: string;
+  type: string;
+  location: string;
+  timestamp: string;
+  fineAmount: number;
+};
+
 
 const ROADS = ["Main Street", "Ring Road Highway", "Independence Avenue"];
 const ROAD_ADDRESSES: Record<string, string[]> = {
@@ -41,6 +51,12 @@ export function useTrafficSimulation() {
     avgCongestion: 0,
     activeDelays: 0,
     totalIncidents: 0,
+  });
+  const [penalties, setPenalties] = useState<PenaltyRecord[]>([]);
+  const [junctionCounts, setJunctionCounts] = useState<Record<string, number>>({
+    "Main Street": 150,
+    "Ring Road Highway": 320,
+    "Independence Avenue": 85
   });
   const [simulatedTimeStr, setSimulatedTimeStr] = useState<string>("00:00:00");
   const simulatedTimeRef = useRef(new Date());
@@ -168,14 +184,68 @@ export function useTrafficSimulation() {
         return newData;
       });
 
+      // Update junction vehicle counts smoothly
+      setJunctionCounts(prev => {
+        const newCounts = { ...prev };
+        ROADS.forEach(road => {
+          // fluctuate count by -5 to +15 vehicles per minute
+          const change = Math.floor(Math.random() * 20) - 5; 
+          newCounts[road] = Math.max(0, newCounts[road] + change);
+        });
+        return newCounts;
+      });
+
       // 2. Random Alerts (10% chance per simulation minute / real second)
       if (Math.random() < 0.10) {
         triggerIncident();
+      }
+
+      // 3. Random Penalties (5% chance per simulation minute)
+      if (Math.random() < 0.05) {
+        const timestamp = simulatedTimeRef.current.toLocaleTimeString('en-US', { hour12: false });
+        const road = ROADS[Math.floor(Math.random() * ROADS.length)];
+        const location = ROAD_ADDRESSES[road][Math.floor(Math.random() * ROAD_ADDRESSES[road].length)];
+        // Generate random license plate e.g. ABC-1234
+        const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+        const carNumber = `${letters.charAt(Math.floor(Math.random()*26))}${letters.charAt(Math.floor(Math.random()*26))}${letters.charAt(Math.floor(Math.random()*26))}-${Math.floor(1000 + Math.random() * 9000)}`;
+        
+        const newPenalty: PenaltyRecord = {
+          id: Math.random().toString(36).substr(2, 9),
+          carNumber,
+          type: "Red Light Run",
+          location,
+          timestamp,
+          fineAmount: 150
+        };
+
+        setPenalties(prev => [newPenalty, ...prev].slice(0, 50)); // Keep last 50
+
+        // Also spawn a brief visual alert for it without adding to global stats 'totalIncidents'
+        const newAlert: IncidentAlert = {
+          id: newPenalty.id,
+          type: "Red Light Run",
+          address: newPenalty.location,
+          road,
+          delay: 0,
+          timestamp,
+          isNew: true
+        };
+
+        setAlerts(prev => {
+          const updated = [newAlert, ...prev].slice(0, 5);
+          return updated;
+        });
+
+        setTimeout(() => {
+          setAlerts(currentAlerts => 
+            currentAlerts.map(a => a.id === newAlert.id ? { ...a, isNew: false } : a)
+          );
+        }, 2000);
       }
     }, 1000); // Accelerated: Every 1 second
 
     return () => clearInterval(interval);
   }, [triggerIncident]);
 
-  return { chartData, alerts, globalStats, roads: ROADS, triggerIncident, clearIncidents, simulatedTimeStr };
+  return { chartData, alerts, globalStats, roads: ROADS, triggerIncident, clearIncidents, simulatedTimeStr, penalties, junctionCounts };
 }
