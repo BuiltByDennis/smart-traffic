@@ -228,20 +228,24 @@ function PenaltiesView({ penalties }: { penalties: PenaltyRecord[] }) {
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<"dashboard" | "live" | "penalties">("dashboard");
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { chartData, alerts, globalStats, triggerIncident, clearIncidents, simulatedTimeStr, penalties, junctionCounts } = useTrafficSimulation();
 
   return (
     <div className="flex h-screen w-full bg-background overflow-hidden">
       
       {/* SIDEBAR NAVIGATION */}
-      <aside className="w-64 border-r border-border bg-card hidden md:flex flex-col shrink-0">
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-40 md:hidden" onClick={() => setIsMobileMenuOpen(false)} />
+      )}
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 border-r border-border bg-card flex flex-col shrink-0 transform transition-transform duration-200 ease-in-out md:relative md:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="h-16 flex items-center px-6 border-b border-border shrink-0">
           <ActivitySquare className="h-6 w-6 text-accent mr-3" />
           <span className="font-mono font-bold text-lg tracking-wider uppercase">iTraffic OS</span>
         </div>
         <nav className="flex-1 py-4 space-y-2 px-3 overflow-y-auto">
           <button 
-            onClick={() => setActiveTab("dashboard")}
+            onClick={() => { setActiveTab("dashboard"); setIsMobileMenuOpen(false); }}
             className={`w-full flex items-center px-3 py-2.5 rounded-md font-medium text-sm transition-colors ${
               activeTab === "dashboard" 
                 ? "bg-secondary text-secondary-foreground shadow-sm" 
@@ -252,7 +256,7 @@ export default function Dashboard() {
             Dashboard
           </button>
           <button 
-            onClick={() => setActiveTab("live")}
+            onClick={() => { setActiveTab("live"); setIsMobileMenuOpen(false); }}
             className={`w-full flex items-center px-3 py-2.5 rounded-md font-medium text-sm transition-colors ${
               activeTab === "live" 
                 ? "bg-secondary text-secondary-foreground shadow-sm" 
@@ -263,7 +267,7 @@ export default function Dashboard() {
             Live Simulation
           </button>
           <button 
-            onClick={() => setActiveTab("penalties")}
+            onClick={() => { setActiveTab("penalties"); setIsMobileMenuOpen(false); }}
             className={`w-full flex items-center px-3 py-2.5 rounded-md font-medium text-sm transition-colors ${
               activeTab === "penalties" 
                 ? "bg-secondary text-secondary-foreground shadow-sm" 
@@ -295,7 +299,7 @@ export default function Dashboard() {
         {/* TOP HEADER */}
         <header className="h-16 border-b border-border bg-background/95 backdrop-blur flex items-center justify-between px-4 sm:px-6 shrink-0">
           <div className="flex items-center">
-            <button className="md:hidden mr-4 text-muted-foreground hover:text-foreground">
+            <button onClick={() => setIsMobileMenuOpen(true)} className="md:hidden mr-4 text-muted-foreground hover:text-foreground">
               <Menu className="h-5 w-5" />
             </button>
             <h1 className="text-xl font-semibold tracking-tight truncate">Command Center</h1>
