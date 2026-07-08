@@ -35,6 +35,16 @@ export type PenaltyRecord = {
   fineAmount: number;
 };
 
+export type AuditLogRecord = {
+  id: string;
+  date: string;
+  timestamp: string;
+  action: string;
+  carNumber: string;
+  details: string;
+  hash: string;
+};
+
 
 const ROADS = ["Akyempim", "Atuabo", "Teberebie"];
 const ROAD_ADDRESSES: Record<string, string[]> = {
@@ -58,6 +68,7 @@ export function useTrafficSimulation() {
     "Atuabo": 320,
     "Teberebie": 85
   });
+  const [auditLogs, setAuditLogs] = useState<AuditLogRecord[]>([]);
   const [simulatedTimeStr, setSimulatedTimeStr] = useState<string>("00:00:00");
   const simulatedTimeRef = useRef(new Date());
 
@@ -220,6 +231,23 @@ export function useTrafficSimulation() {
 
         setPenalties(prev => [newPenalty, ...prev].slice(0, 50)); // Keep last 50
 
+        // Create immutable audit log
+        const generateFakeHash = () => {
+          return '0x' + Array.from({length: 40}, () => Math.floor(Math.random()*16).toString(16)).join('');
+        };
+        
+        const newAuditLog: AuditLogRecord = {
+          id: newPenalty.id,
+          date: simulatedTimeRef.current.toLocaleDateString('en-US'),
+          timestamp: timestamp,
+          action: "PENALTY_ISSUED",
+          carNumber: carNumber,
+          details: `Red Light Violation @ ${location} - GHc ${newPenalty.fineAmount} Fine`,
+          hash: generateFakeHash()
+        };
+
+        setAuditLogs(prev => [newAuditLog, ...prev]); // Never slice, immutable growing log
+
         // Also spawn a brief visual alert for it without adding to global stats 'totalIncidents'
         const newAlert: IncidentAlert = {
           id: newPenalty.id,
@@ -247,5 +275,5 @@ export function useTrafficSimulation() {
     return () => clearInterval(interval);
   }, [triggerIncident]);
 
-  return { chartData, alerts, globalStats, roads: ROADS, triggerIncident, clearIncidents, simulatedTimeStr, penalties, junctionCounts };
+  return { chartData, alerts, globalStats, roads: ROADS, triggerIncident, clearIncidents, simulatedTimeStr, penalties, junctionCounts, auditLogs };
 }

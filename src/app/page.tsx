@@ -15,10 +15,12 @@ import {
   Play,
   XCircle,
   FileText,
-  Search
+  Search,
+  ShieldCheck,
+  Lock
 } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { useTrafficSimulation, IncidentAlert, PenaltyRecord } from "@/hooks/useTrafficSimulation";
+import { useTrafficSimulation, IncidentAlert, PenaltyRecord, AuditLogRecord } from "@/hooks/useTrafficSimulation";
 
 const Card = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
   <div className={`rounded-xl border border-border bg-card text-card-foreground shadow-sm ${className}`}>
@@ -226,10 +228,73 @@ function PenaltiesView({ penalties }: { penalties: PenaltyRecord[] }) {
   );
 }
 
+function AuditTrailView({ auditLogs }: { auditLogs: AuditLogRecord[] }) {
+  return (
+    <div className="flex flex-col h-full space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0">
+        <div>
+          <h2 className="text-2xl font-bold tracking-tight flex items-center">
+            <ShieldCheck className="h-6 w-6 mr-2 text-accent" />
+            Immutable Audit Trail
+          </h2>
+          <p className="text-muted-foreground text-sm">Cryptographically secured, read-only ledger of all system penalties. Cannot be modified or deleted by administrators.</p>
+        </div>
+        <div className="flex items-center space-x-2 text-xs font-mono bg-accent/10 text-accent px-3 py-1.5 rounded-full border border-accent/20">
+          <Lock className="h-3 w-3" />
+          <span>WORM Storage Active (Write Once, Read Many)</span>
+        </div>
+      </div>
+      
+      <Card className="flex-1 flex flex-col overflow-hidden border-accent/30 shadow-[0_0_20px_rgba(34,197,94,0.05)]">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-left">
+            <thead className="text-xs text-muted-foreground uppercase bg-secondary/50 border-b border-border">
+              <tr>
+                <th className="px-6 py-4 font-medium">Timestamp</th>
+                <th className="px-6 py-4 font-medium">Action</th>
+                <th className="px-6 py-4 font-medium">Details</th>
+                <th className="px-6 py-4 font-medium font-mono">Block Signature (SHA-256)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {auditLogs.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-6 py-8 text-center text-muted-foreground border-b border-border">
+                    No blocks generated yet. Waiting for penalties.
+                  </td>
+                </tr>
+              ) : (
+                auditLogs.map((log) => (
+                  <tr key={log.id} className="border-b border-border hover:bg-secondary/20 transition-colors opacity-90">
+                    <td className="px-6 py-4 font-mono text-xs text-muted-foreground whitespace-nowrap">
+                      <div>{log.date}</div>
+                      <div>{log.timestamp}</div>
+                    </td>
+                    <td className="px-6 py-4 font-mono font-bold text-xs text-orange-500">
+                      {log.action}
+                      <div className="text-[10px] text-muted-foreground mt-1">Plate: {log.carNumber}</div>
+                    </td>
+                    <td className="px-6 py-4 text-xs font-medium text-foreground max-w-[200px] truncate" title={log.details}>
+                      {log.details}
+                    </td>
+                    <td className="px-6 py-4 font-mono text-[10px] text-muted-foreground break-all max-w-[250px]">
+                      {log.hash}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
 export default function Dashboard() {
-  const [activeTab, setActiveTab] = useState<"dashboard" | "live" | "penalties">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "live" | "penalties" | "audit">("dashboard");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const { chartData, alerts, globalStats, triggerIncident, clearIncidents, simulatedTimeStr, penalties, junctionCounts } = useTrafficSimulation();
+  const { chartData, alerts, globalStats, triggerIncident, clearIncidents, simulatedTimeStr, penalties, junctionCounts, auditLogs } = useTrafficSimulation();
 
   return (
     <div className="flex h-screen w-full bg-background overflow-hidden">
@@ -276,6 +341,17 @@ export default function Dashboard() {
           >
             <FileText className="mr-3 h-5 w-5" />
             Penalty Log
+          </button>
+          <button 
+            onClick={() => { setActiveTab("audit"); setIsMobileMenuOpen(false); }}
+            className={`w-full flex items-center px-3 py-2.5 rounded-md font-medium text-sm transition-colors ${
+              activeTab === "audit" 
+                ? "bg-secondary text-secondary-foreground shadow-sm" 
+                : "text-muted-foreground hover:bg-secondary/50 hover:text-foreground"
+            }`}
+          >
+            <ShieldCheck className="mr-3 h-5 w-5" />
+            Audit Trail
           </button>
           <button className="w-full flex items-center px-3 py-2.5 text-muted-foreground hover:bg-secondary/50 hover:text-foreground rounded-md font-medium text-sm transition-colors">
             <Settings className="mr-3 h-5 w-5" />
@@ -331,6 +407,8 @@ export default function Dashboard() {
             />
           ) : activeTab === "penalties" ? (
             <PenaltiesView penalties={penalties} />
+          ) : activeTab === "audit" ? (
+            <AuditTrailView auditLogs={auditLogs} />
           ) : (
             <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
               {/* KPI Metrics & Chart Column */}
